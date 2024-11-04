@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Message Submission</title>
+    <title>Akash and Bronny's Dorm Display</title>
     <style>
         /* Basic Reset */
         * {
@@ -37,6 +38,20 @@
             color: #333;
         }
 
+        h2 {
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        h3 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: lighter;
+            color: #333;
+        }
+
         label {
             font-weight: bold;
             color: #555;
@@ -44,7 +59,8 @@
             margin-bottom: 5px;
         }
 
-        input[type="text"], button {
+        input[type="text"],
+        button {
             width: 100%;
             padding: 10px;
             margin-top: 8px;
@@ -83,54 +99,131 @@
             background-color: #f2dede;
             color: #a94442;
         }
+
+        /* Styling for Message Display */
+        #messagesList {
+            margin-top: 20px;
+        }
+
+        .message-item {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+
+        .timestamp {
+            color: #888;
+            font-size: 0.8em;
+        }
     </style>
 </head>
+
 <body>
 
-<div class="container">
-    <h1>Submit a Message</h1>
-    <form id="messageForm">
-        <label for="message">Enter your message:</label>
-        <input type="text" id="message" name="message" required>
-        <button type="submit">Submit</button>
-    </form>
+    <div class="container">
+        <h1>Write a Message for Akash and Bronny's Room!</h1>
+        <h3>your message will be in our room for one day</h3>
+        <form id="messageForm">
+            <label for="message">Enter your message:</label>
+            <input type="text" id="message" name="message" required>
+            <button type="submit">Submit</button>
+        </form>
 
-    <div id="responseMessage" class="message"></div>
-</div>
+        <h2>Previous Messages</h2>
+        <div id="responseMessage" class="message"></div>
 
-<script>
-    const form = document.getElementById('messageForm');
-    const responseMessage = document.getElementById('responseMessage');
+        <div id="messagesList"></div>
+    </div>
 
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const messageText = document.getElementById('message').value;
+    <script>
+        const form = document.getElementById('messageForm');
+        const responseMessage = document.getElementById('responseMessage');
+        const messagesList = document.getElementById('messagesList');
 
         // Google Apps Script Web App URL
         const url = "https://script.google.com/macros/s/AKfycbxndxRpJ29Mns2UP6eGmnRTBPr-TF2woXHTAxteBmW8QZu4duAN3Repgwchj7uc4_2F/exec";
 
-        // Send POST request to the Google Apps Script
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                mode: 'no-cors',  // Add this line
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ message: messageText })
-            });
-            
-            responseMessage.textContent = "Message submitted successfully!";
-            responseMessage.className = "message success";
-        } catch (error) {
-            responseMessage.textContent = error.message;
-            responseMessage.className = "message error";
-        } finally {
-            responseMessage.style.display = "block";
-            form.reset();
+        // Function to format the ISO timestamp
+        function formatTimestamp(isoTimestamp) {
+            const date = new Date(isoTimestamp);
+            const options = {
+                year: 'numeric',
+                month: 'short',   // Use 'short' for abbreviated month names like "Nov"
+                day: 'numeric',
+                hour: 'numeric',
+                minute: 'numeric',
+                hour12: true      // 12-hour format with AM/PM
+            };
+            return date.toLocaleString('en-US', options);
         }
-    });
-</script>
+
+
+        // Function to load and display messages from Google Sheet
+        async function displayMessages() {
+            try {
+                const response = await fetch(url);
+                const messages = await response.json();
+
+                // Clear previous messages
+                messagesList.innerHTML = "";
+
+                // reverse the messages array to display the latest message first
+                messages.reverse();
+
+                messages.forEach(msg => {
+                    const messageItem = document.createElement("div");
+                    messageItem.className = "message-item";
+
+                    const timestamp = document.createElement("div");
+                    timestamp.className = "timestamp";
+                    timestamp.textContent = `${formatTimestamp(msg.timestamp)}`;
+
+                    const messageText = document.createElement("div");
+                    messageText.textContent = msg.message;
+
+                    messageItem.appendChild(messageText);
+                    messageItem.appendChild(timestamp);
+
+                    messagesList.appendChild(messageItem);
+                });
+            } catch (error) {
+                console.error("Error loading messages:", error);
+            }
+        }
+
+        // Initial load of messages
+        displayMessages();
+
+        // Submit message and refresh message list
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const messageText = document.getElementById('message').value;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    mode: 'no-cors', // limited response for no-cors mode
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: messageText })
+                });
+
+                responseMessage.textContent = "Message submitted successfully!";
+                responseMessage.className = "message success";
+                displayMessages();  // Refresh messages after submission
+            } catch (error) {
+                responseMessage.textContent = error.message;
+                responseMessage.className = "message error";
+            } finally {
+                responseMessage.style.display = "block";
+                form.reset();
+            }
+        });
+    </script>
 
 </body>
+
 </html>
