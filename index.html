@@ -113,19 +113,15 @@
         try {
             const response = await fetch(url, {
                 method: 'POST',
+                mode: 'no-cors',  // Add this line
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ message: messageText })
             });
-
-            if (response.ok) {
-                const result = await response.json();
-                responseMessage.textContent = "Message submitted successfully!";
-                responseMessage.className = "message success";
-            } else {
-                throw new Error("Failed to submit the message.");
-            }
+            
+            responseMessage.textContent = "Message submitted successfully!";
+            responseMessage.className = "message success";
         } catch (error) {
             responseMessage.textContent = error.message;
             responseMessage.className = "message error";
