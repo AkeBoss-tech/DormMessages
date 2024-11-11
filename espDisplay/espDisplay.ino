@@ -1,12 +1,15 @@
-#include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
-#include <ArduinoJson.h>
 #include <MD_Parola.h>
 #include <MD_MAX72xx.h>
 #include <SPI.h>
 #include <WiFiUdp.h>
 #include <NTPClient.h>
 #include <TimeLib.h>
+
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+#include <ArduinoJson.h>
+#include <Arduino.h>
+#include <WiFiClientSecureBearSSL.h>
 
 // Configuration for LED Matrix
 #define HARDWARE_TYPE MD_MAX72XX::FC16_HW
@@ -65,37 +68,58 @@ void loop() {
   bool hasMessages = false;  // Track if any messages were received
 
   if (WiFi.status() == WL_CONNECTED) {
+    std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
+
+    // Ignore SSL certificate validation
+    client->setInsecure();
+    
+    //create an HTTPClient instance
     HTTPClient http;
-    WiFiClient client;
+    http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
 
-    http.begin(client, scriptURL);
-    int httpResponseCode = http.GET();
-    Serial.println(http.getString());
+    //Initializing an HTTPS communication using the secure client
+    Serial.print("[HTTPS] begin...\n");
 
-    if (httpResponseCode == 200) {
-      String payload = http.getString();
-      Serial.println("Data received:");
+    http.begin(*client, json_url); // Initialize HTTP client with the URL
+
+    int httpCode = http.GET(); // Make the GET request
+
+   if (httpCode != 0) {
+      String payload = http.getString(); // Get the JSON response as a string
+
+      // Print entire JSON response
+      Serial.println("JSON Response:");
       Serial.println(payload);
 
       // Parse JSON
-      DynamicJsonDocument doc(1024);
-      deserializeJson(doc, payload);
+      StaticJsonDocument<1024> doc; // Adjust size based on JSON size
+      DeserializationError error = deserializeJson(doc, payload);
 
-      myDisplay.displayClear();
+      if (error) {
+        Serial.print("Failed to parse JSON: ");
+        Serial.println(error.c_str());
+      } else {
+        hasMessages = false;
+        Serial.print("got it");
+        // Iterate over each element in the JSON array
+        for (JsonObject item : doc.as<JsonArray>()) {
+          hasMessages = true;
+          const char* timestamp = item["timestamp"];
+          const char* message = item["message"];
 
-      // Check if there are messages in the JSON array
-      if (doc.size() > 0) {
-        hasMessages = true;
-        for (JsonObject msg : doc.as<JsonArray>()) {
-          const char* message = msg["message"];
-          Serial.printf("Message: %s\n", message);
-
+          Serial.print("Timestamp: ");
+          Serial.println(timestamp);
+          Serial.print("Message: ");
+          Serial.println(message);
+          Serial.println();
           // Display each message on the matrix
           myDisplay.displayClear();
           myDisplay.displayScroll(message, PA_CENTER, PA_SCROLL_LEFT, 50);
           while (!myDisplay.displayAnimate());  // Wait until the message is fully displayed
         }
       }
+
+      myDisplay.displayClear();
     } else {
       Serial.printf("Error: %d\n", httpResponseCode);
     }
