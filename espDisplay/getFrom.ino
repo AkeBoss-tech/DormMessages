@@ -5,8 +5,8 @@
 #include <WiFiClientSecureBearSSL.h>
 
 // WiFi credentials
-const char* ssid = "Fios-KnCH6";
-const char* password = "swam47mam88argo";
+const char* ssid = "";
+const char* password = "";
 
 // URL to fetch JSON data from
 const char* json_url = "https://script.google.com/macros/s/AKfycbxndxRpJ29Mns2UP6eGmnRTBPr-TF2woXHTAxteBmW8QZu4duAN3Repgwchj7uc4_2F/exec";
@@ -57,11 +57,17 @@ void loop() {
         Serial.print("Failed to parse JSON: ");
         Serial.println(error.c_str());
       } else {
-        // Assuming the JSON structure is { "key1": "value1", "key2": "value2" }
-        for (JsonPair kv : doc.as<JsonObject>()) {
-          Serial.print(kv.key().c_str());
-          Serial.print(": ");
-          Serial.println(kv.value().as<const char*>());
+        Serial.print("got it");
+        // Iterate over each element in the JSON array
+        for (JsonObject item : doc.as<JsonArray>()) {
+          const char* timestamp = item["timestamp"];
+          const char* message = item["message"];
+
+          Serial.print("Timestamp: ");
+          Serial.println(timestamp);
+          Serial.print("Message: ");
+          Serial.println(message);
+          Serial.println();
         }
       }
     } else {
